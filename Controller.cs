@@ -58,46 +58,38 @@ namespace MoveHub
 
         public Task StartMotorTime(Port port, ushort time, sbyte power)
         {
-            return StartMotor(new MotorTimeCommand(port, time, power));
+            return WriteCommand(new MotorTimeCommand(port, time, power));
         }
 
         public Task StartMoveTime(ushort time, sbyte powerA, sbyte powerB)
         {
-            return StartMotor(new MotorTimeMoveCommand(time, powerA, powerB));
+            return WriteCommand(new MotorTimeMoveCommand(time, powerA, powerB));
         }
 
         public Task StartMotorAngle(Port port, uint angle, sbyte power)
         {
-            return StartMotor(new MotorAngleCommand(port, angle, power));
+            return WriteCommand(new MotorAngleCommand(port, angle, power));
         }
 
         public Task StartMoveAngle(uint angle, sbyte powerA, sbyte powerB)
         {
-            return StartMotor(new MotorAngleMoveCommand(angle, powerA, powerB));
+            return WriteCommand(new MotorAngleMoveCommand(angle, powerA, powerB));
         }
 
-        private async Task StartMotor(MotorCommandBase command)
+        public Task SetColor(Color color)
         {
-            var c = _characteristic;
-            var writer = new DataWriter();
-            writer.WriteBytes(new byte[] { command.Length, 0x00, 0x81 });
-            writer.WriteByte((byte)command.Port);
-            writer.WriteBytes(new byte[] { 0x11, command.Command });
-            writer.ByteOrder = ByteOrder.LittleEndian;
-            command.WriteBody(writer);
-            writer.WriteByte(unchecked((byte)command.Power));
-            if (command is IPowerB b)
-                writer.WriteByte(unchecked((byte)b.PowerB));
-            writer.WriteBytes(new byte[] { 0x64, 0x7F, 0x03 });
-            await c.WriteValueAsync(writer.DetachBuffer());
+            return WriteCommand(new ColorCommand(color));
         }
 
-        public async Task SetColor(Color color)
+        private async Task WriteCommand(CommandBase command)
         {
-            var c = _characteristic;
-            var writer = new DataWriter();
-            writer.WriteBytes(new byte[] { 0x08, 0x00, 0x81, 0x32, 0x11, 0x51, 0x00, (byte)color });
-            await c.WriteValueAsync(writer.DetachBuffer());
+            using (var writer = new DataWriter())
+            {
+                command.Write(writer);
+                var result = await _characteristic.WriteValueAsync(writer.DetachBuffer());
+                if (result != GattCommunicationStatus.Success)
+                    throw new Exception($"Failed to write command {command}");
+            }
         }
 
         public void Dispose()
