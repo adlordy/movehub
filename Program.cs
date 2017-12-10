@@ -23,14 +23,13 @@ namespace MoveHub
             {
                 controller.Connected += async (s, e) =>
                 {
-                    await controller.SetColor(Color.Red);
-                    await Task.Delay(1000);
-                    await controller.StartMotor(Port.AB, 200, 20);
-                    await Task.Delay(200);
-                    await controller.SetColor(Color.Blue);
-                    await Task.Delay(1000);
-                    await controller.StartMotors(1000, 100, -100);
-                    await Task.Delay(1000);
+                    await controller.StartMoveAngle(230, 20, -20);
+                    await Task.Delay(2000);
+                    await controller.StartMoveAngle(230, -20, 20);
+                    await Task.Delay(2000);
+                    await controller.StartMotorAngle(Port.D, 30, 50);
+                    await Task.Delay(2000);
+                    await controller.StartMotorAngle(Port.D, 30, -50);
                     mre.Set();
                 };
                 System.Console.WriteLine("Press button on move hub");

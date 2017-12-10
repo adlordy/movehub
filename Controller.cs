@@ -56,28 +56,38 @@ namespace MoveHub
             Connected(this, new EventArgs());
         }
 
-        public Task StartMotor(Port port, ushort time, sbyte power)
+        public Task StartMotorTime(Port port, ushort time, sbyte power)
         {
-            return StartMotor(port, time, power, null);
+            return StartMotor(new MotorTimeCommand(port, time, power));
         }
 
-        public Task StartMotors(ushort time, sbyte aPower, sbyte bPower)
+        public Task StartMoveTime(ushort time, sbyte powerA, sbyte powerB)
         {
-            return StartMotor(Port.AB, time, aPower, bPower);
+            return StartMotor(new MotorTimeMoveCommand(time, powerA, powerB));
         }
 
-        private async Task StartMotor(Port port, ushort time, sbyte power1, sbyte? power2)
+        public Task StartMotorAngle(Port port, uint angle, sbyte power)
+        {
+            return StartMotor(new MotorAngleCommand(port, angle, power));
+        }
+
+        public Task StartMoveAngle(uint angle, sbyte powerA, sbyte powerB)
+        {
+            return StartMotor(new MotorAngleMoveCommand(angle, powerA, powerB));
+        }
+
+        private async Task StartMotor(MotorCommandBase command)
         {
             var c = _characteristic;
             var writer = new DataWriter();
-            writer.WriteBytes(new byte[] { power2.HasValue ? (byte)0x0D : (byte)0x0C, 0x00, 0x81 });
-            writer.WriteByte((byte)port);
-            writer.WriteBytes(new byte[] { 0x11, power2.HasValue ? (byte) 0x0A : (byte) 0x09 });
+            writer.WriteBytes(new byte[] { command.Length, 0x00, 0x81 });
+            writer.WriteByte((byte)command.Port);
+            writer.WriteBytes(new byte[] { 0x11, command.Command });
             writer.ByteOrder = ByteOrder.LittleEndian;
-            writer.WriteUInt16(time);
-            writer.WriteByte(unchecked((byte)power1));
-            if (power2.HasValue)
-                writer.WriteByte(unchecked((byte)power2.Value));
+            command.WriteBody(writer);
+            writer.WriteByte(unchecked((byte)command.Power));
+            if (command is IPowerB b)
+                writer.WriteByte(unchecked((byte)b.PowerB));
             writer.WriteBytes(new byte[] { 0x64, 0x7F, 0x03 });
             await c.WriteValueAsync(writer.DetachBuffer());
         }
