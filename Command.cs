@@ -25,6 +25,16 @@ namespace MoveHub
         }
     }
 
+    internal class SubscribeCommand{
+        internal SubscribeCommand(Sensor sensor){
+
+        }
+
+        internal void Write(DataWriter write){
+            //[0x0A, 0x00, 0x41, port, option, 0x01, 0x00, 0x00, 0x00, 0x01]
+        }
+    }
+
     internal class ColorCommand : CommandBase
     {
         public ColorCommand(Color color) : base(Port.LED)

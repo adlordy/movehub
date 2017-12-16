@@ -8,6 +8,6 @@ namespace MoveHub
         A = 0x37,
         B = 0x38,
         AB = 0x39,
-        Tild = 0x3A
+        Tilt = 0x3A
     }
 }

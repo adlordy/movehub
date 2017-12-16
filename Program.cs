@@ -21,16 +21,9 @@ namespace MoveHub
             };
             using (var controller = new Controller())
             {
-                controller.Connected += async (s, e) =>
+                controller.OnConnected += (s, e) =>
                 {
-                    await controller.StartMoveAngle(230, 20, -20);
-                    await Task.Delay(2000);
-                    await controller.StartMoveAngle(230, -20, 20);
-                    await Task.Delay(2000);
-                    await controller.StartMotorAngle(Port.D, 30, 50);
-                    await Task.Delay(2000);
-                    await controller.StartMotorAngle(Port.D, 30, -50);
-                    mre.Set();
+                    System.Console.WriteLine("Connected");
                 };
                 System.Console.WriteLine("Press button on move hub");
                 mre.WaitOne();

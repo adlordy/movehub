@@ -16,12 +16,14 @@ namespace MoveHub
         private BluetoothLEDevice _device;
         private GattCharacteristic _characteristic;
 
-        public event EventHandler<EventArgs> Connected;
+        public event EventHandler<EventArgs> OnConnected;
+        public event EventHandler<Notification> OnNotification;
 
         public Controller()
         {
             InitWatcher();
-            Connected += (s, e) => { };
+            OnConnected += (s, e) => { };
+            OnNotification += (s, e) => { };
         }
 
         private void InitWatcher()
@@ -37,10 +39,10 @@ namespace MoveHub
         {
             sender.Stop();
             _address = args.BluetoothAddress;
-            await OnConnected();
+            await Connected();
         }
 
-        private async Task OnConnected()
+        private async Task Connected()
         {
             _device = await BluetoothLEDevice.FromBluetoothAddressAsync(_address);
             var gatt = await _device.GetGattServicesForUuidAsync(ServiceId);
@@ -53,7 +55,33 @@ namespace MoveHub
                 throw new Exception("Failed to get characteristic");
 
             _characteristic = cs.Characteristics.Single();
-            Connected(this, new EventArgs());
+            await Subscribe();
+            OnConnected(this, new EventArgs());
+        }
+
+        private async Task Subscribe()
+        {
+            var value = GattClientCharacteristicConfigurationDescriptorValue.None;
+            if (_characteristic.CharacteristicProperties.HasFlag(GattCharacteristicProperties.Indicate))
+            {
+                value = GattClientCharacteristicConfigurationDescriptorValue.Indicate;
+            }
+            else if (_characteristic.CharacteristicProperties.HasFlag(GattCharacteristicProperties.Notify))
+            {
+                value = GattClientCharacteristicConfigurationDescriptorValue.Notify;
+            }
+            var status = await _characteristic.WriteClientCharacteristicConfigurationDescriptorAsync(value);
+            _characteristic.ValueChanged += ValueChanged;
+        }
+
+        private void ValueChanged(GattCharacteristic sender, GattValueChangedEventArgs args)
+        {
+            var buffer = args.CharacteristicValue;
+            using (var reader = DataReader.FromBuffer(buffer))
+            {
+                var notification = Notification.Parse(reader);
+                OnNotification(this, notification);
+            }
         }
 
         public Task StartMotorTime(Port port, ushort time, sbyte power)
@@ -94,6 +122,10 @@ namespace MoveHub
 
         public void Dispose()
         {
+            if (_characteristic != null)
+            {
+                _characteristic.ValueChanged -= ValueChanged;
+            }
             _device?.Dispose();
         }
     }
