@@ -5,26 +5,9 @@ namespace MoveHub
 {
     public abstract class Notification
     {
-
-        public static Notification Parse(DataReader reader)
-        {
-            var length = reader.ReadByte();
-            var version = reader.ReadByte();
-            var type = reader.ReadByte();
-            switch (type)
-            {
-                case 0x01:
-                    return DeviceInfoNotification.ParseInfo(reader);
-                case 0x04:
-                    return PortInfoNotification.ParseInfo(reader);
-                default:
-                    return new RawNotification(type, null, reader);
-            }
-
-        }
     }
 
-    internal abstract class PortInfoNotification : Notification
+    public abstract class PortInfoNotification : Notification
     {
         public Port Port { get; }
         public DeviceType DeviceType { get; }
@@ -34,31 +17,9 @@ namespace MoveHub
             Port = port;
             DeviceType = deviceType;
         }
-
-        internal static Notification ParseInfo(DataReader reader)
-        {
-            var port = (Port)reader.ReadByte();
-            var singleOrGroup = reader.ReadByte();
-            var deviceType = singleOrGroup == 0x00 ? 0 :
-                (DeviceType)reader.ReadByte();
-            switch (singleOrGroup)
-            {
-                case 0x00:
-                    return new PortDetached(port, deviceType);
-                case 0x01:
-                    return new PortAttached(port, deviceType);
-                case 0x02:
-                    var spacer = reader.ReadByte();
-                    var port1 = reader.ReadByte();
-                    var port2 = reader.ReadByte();
-                    return new GroupAttached(port, deviceType, port1, port2);
-                default:
-                    throw new FormatException("Unknown value");
-            }
-        }
     }
 
-    internal class GroupAttached : PortInfoNotification
+    public class GroupAttached : PortInfoNotification
     {
         public byte Port1 { get; }
         public byte Port2 { get; }
@@ -70,14 +31,14 @@ namespace MoveHub
         }
     }
 
-    internal class PortAttached : PortInfoNotification
+    public class PortAttached : PortInfoNotification
     {
         internal PortAttached(Port port, DeviceType deviceType) : base(port, deviceType)
         {
         }
     }
 
-    internal class PortDetached : PortInfoNotification
+    public class PortDetached : PortInfoNotification
     {
         internal PortDetached(Port port, DeviceType deviceType) : base(port, deviceType)
         {
@@ -85,7 +46,7 @@ namespace MoveHub
         }
     }
 
-    internal class RawNotification : Notification
+    public class RawNotification : Notification
     {
         public RawNotification(byte type, byte? subType, DataReader reader)
         {
@@ -105,24 +66,7 @@ namespace MoveHub
         }
     }
 
-    internal abstract class DeviceInfoNotification : Notification
-    {
-        internal static Notification ParseInfo(DataReader reader)
-        {
-            var type = reader.ReadByte();
-            var spacer = reader.ReadByte();
-            switch (type)
-            {
-                case 0x01:
-                case 0x08:
-                    return new DeviceInfoStringNotification(type, reader);
-                default:
-                    return new RawNotification(0x01, type, reader);
-            }
-        }
-    }
-
-    internal class DeviceInfoStringNotification : DeviceInfoNotification
+    public class DeviceInfoStringNotification : Notification
     {
         public DeviceInfoStringNotification(byte type, DataReader reader)
         {
@@ -131,5 +75,41 @@ namespace MoveHub
         }
         public byte Type { get; }
         public string Value { get; }
+    }
+
+    public class MotorSensorNotification : Notification
+    {
+        public Port Port;
+        public int Angle;
+
+        public MotorSensorNotification(Port port, int angle)
+        {
+            Port = port;
+            Angle = angle;
+        }
+    }
+
+    public class TiltSensorNotification : Notification
+    {
+        public sbyte Roll { get; }
+        public sbyte Pitch { get; }
+
+        public TiltSensorNotification(sbyte roll, sbyte pitch)
+        {
+            Roll = roll;
+            Pitch = pitch;
+        }
+    }
+
+    public class ColorDistanceSensorNotification : Notification
+    {
+        public ColorDistanceSensorNotification(SensorColor color, byte value, byte partial)
+        {
+            Color = color;
+            Distance = value + (partial != 0 ? 1f / partial : 0f);
+        }
+
+        public SensorColor Color { get; }
+        public float Distance { get; }
     }
 }

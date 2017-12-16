@@ -5,37 +5,45 @@ namespace MoveHub
 {
     internal abstract class CommandBase
     {
-
         protected CommandBase(Port port)
         {
             Port = port;
         }
         protected Port Port { get; }
         protected abstract byte Length { get; }
+        internal abstract void Write(DataWriter writer);
+    }
+
+    internal abstract class ControlCommandBase : CommandBase
+    {
+        protected ControlCommandBase(Port port) : base(port)
+        {
+        }
         protected abstract byte Command { get; }
         protected abstract void WriteBody(DataWriter writer);
-
-        internal void Write(DataWriter writer)
+        internal override void Write(DataWriter writer)
         {
-            writer.WriteBytes(new byte[] { Length, 0x00, 0x81 });
-            writer.WriteByte((byte)Port);
-            writer.WriteBytes(new byte[] { 0x11, Command });
+            writer.WriteBytes(new byte[] { Length, 0x00, 0x81, (byte)Port, 0x11, Command });
             writer.ByteOrder = ByteOrder.LittleEndian;
             WriteBody(writer);
         }
     }
 
-    internal class SubscribeCommand{
-        internal SubscribeCommand(Sensor sensor){
-
+    internal class SubscribeCommand : CommandBase
+    {
+        internal SubscribeCommand(Port port, byte option) : base(port)
+        {
+            Option = option;
         }
-
-        internal void Write(DataWriter write){
-            //[0x0A, 0x00, 0x41, port, option, 0x01, 0x00, 0x00, 0x00, 0x01]
+        public byte Option { get; }
+        protected override byte Length => 0x0A;
+        internal override void Write(DataWriter write)
+        {
+            write.WriteBytes(new byte[] { Length, 0x00, 0x41, (byte)Port, Option, 0x01, 0x00, 0x00, 0x00, 0x01 });
         }
     }
 
-    internal class ColorCommand : CommandBase
+    internal class ColorCommand : ControlCommandBase
     {
         public ColorCommand(Color color) : base(Port.LED)
         {
@@ -53,7 +61,7 @@ namespace MoveHub
             writer.WriteByte((byte)Color);
         }
     }
-    internal abstract class MotorCommandBase : CommandBase
+    internal abstract class MotorCommandBase : ControlCommandBase
     {
         protected MotorCommandBase(Port port, sbyte power) : base(port)
         {

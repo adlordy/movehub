@@ -1,5 +1,6 @@
 namespace MoveHub{
     public enum DeviceType : byte{
+        Unknown = 0x00,
         PowerVoltage = 0x14,
         CircutPower = 0x15,
         Led = 0x17,
